@@ -12,10 +12,10 @@ from pathlib import Path
 import copy
 import re
 
-def checkAndCreateDir(full_path):
-    """Checks if a given path exists and if not, creates the needed directories.
-            Inputs:
-                full_path: path to be checked
+def checkAndCreateDir(full_path):  
+    """检查给出的路径是否存在，不存在，创建此路径。
+            输入：
+                full_path: 路径
     """
     if not os.path.exists(os.path.dirname(full_path)):
         try:
@@ -24,12 +24,12 @@ def checkAndCreateDir(full_path):
             if exc.errno != errno.EEXIST:
                 raise
                 
-def readImagesFromPath(image_names):
-    """ Takes in a path and a list of image file names to be loaded and returns a list of all loaded images after resize.
-           Inputs:
-                image_names: list of image names
-           Returns:
-                List of all loaded and resized images
+def readImagesFromPath(image_names):  
+    """ 进入一个目录，导入一个图片文件名字的列表，返回一个导入图片后尺寸改变了的图片的列表。
+           输入：
+                image_names: 图片名字的列表
+           返回值：
+                所有导入并且被改变尺寸的图片的列表
     """
     returnValue = []
     for image_name in image_names:
@@ -51,16 +51,16 @@ def readImagesFromPath(image_names):
     
     
     
-def splitTrainValidationAndTestData(all_data_mappings, split_ratio=(0.7, 0.2, 0.1)):
-    """Simple function to create train, validation and test splits on the data.
-            Inputs:
-                all_data_mappings: mappings from the entire dataset
-                split_ratio: (train, validation, test) split ratio
+def splitTrainValidationAndTestData(all_data_mappings, split_ratio=(0.7, 0.2, 0.1)):  
+    """将原始数据按比例分配给train, validation and test 数据集。
+            输入：
+                all_data_mappings: 全部映射的数据集
+                split_ratio: (train, validation, test) 分配比例，加起来等于一。
 
-            Returns:
-                train_data_mappings: mappings for training data
-                validation_data_mappings: mappings for validation data
-                test_data_mappings: mappings for test data
+            返回值：
+                train_data_mappings: 训练数据集映射
+                validation_data_mappings: 验证数据集映射
+                test_data_mappings: 测试数据集映射
 
     """
     if round(sum(split_ratio), 5) != 1.0:
@@ -70,6 +70,7 @@ def splitTrainValidationAndTestData(all_data_mappings, split_ratio=(0.7, 0.2, 0.
     train_split = int(len(all_data_mappings) * split_ratio[0])
     val_split = train_split + int(len(all_data_mappings) * split_ratio[1])
 
+    # 这里因为数据集映射在被创建时就随机打乱了，所以这里就取前面对应的比例就行。
     train_data_mappings = all_data_mappings[0:train_split]
     validation_data_mappings = all_data_mappings[train_split:val_split]
     test_data_mappings = all_data_mappings[val_split:]
@@ -77,14 +78,16 @@ def splitTrainValidationAndTestData(all_data_mappings, split_ratio=(0.7, 0.2, 0.
     return [train_data_mappings, validation_data_mappings, test_data_mappings]
     
 def generateDataMapAirSim(folders):
-    """ Data map generator for simulator(AirSim) data. Reads the driving_log csv file and returns a list of 'center camera image name - label(s)' tuples
-           Inputs:
-               folders: list of folders to collect data from
+    """ 数据映射生成器。读取driving_log csv 文件，返回一个包含”图片名称 - 标注“ 元组的列表。
+           输入：
+               folders: 所有数据文件组成的一个列表
 
-           Returns:
-               mappings: All data mappings as a dictionary. Key is the image filepath, the values are a 2-tuple:
-                   0 -> label(s) as a list of double
-                   1 -> previous state as a list of double
+           返回值：
+               mappings: 所有的数据映射为一个列表。列表由二维元组组成： （原函数标注有误）
+                0 -> 图片的目录
+                1 -> 一个二维元组：
+                   0 -> 标注（double类型 的列表），标注就是steering  
+                   1 -> 之前的状态（double类型 的列表），状态值都有：['Steering', 'Throttle', 'Brake', 'Speed (kmph)']
     """
 
     all_mappings = {}
@@ -106,13 +109,13 @@ def generateDataMapAirSim(folders):
     
     mappings = [(key, all_mappings[key]) for key in all_mappings]
     
-    random.shuffle(mappings)
+    random.shuffle(mappings)# 随机打乱顺序
     
     return mappings
 
-def generatorForH5py(data_mappings, chunk_size=32):
+def generatorForH5py(data_mappings, chunk_size=32):  
     """
-    This function batches the data for saving to the H5 file
+    批量化数据来保存到 h5 文件
     """
     for chunk_id in range(0, len(data_mappings), chunk_size):
         # Data is expected to be a dict of <image: (label, previousious_state)>
@@ -131,7 +134,7 @@ def generatorForH5py(data_mappings, chunk_size=32):
     
 def saveH5pyData(data_mappings, target_file_path):
     """
-    Saves H5 data to file
+    保存 h5 数据文件。
     """
     chunk_size = 32
     gen = generatorForH5py(data_mappings,chunk_size)
@@ -178,14 +181,14 @@ def saveH5pyData(data_mappings, target_file_path):
             
             
 def cook(folders, output_directory, train_eval_test_split):
-    """ Primary function for data pre-processing. Reads and saves all data as h5 files.
-            Inputs:
-                folders: a list of all data folders
-                output_directory: location for saving h5 files
-                train_eval_test_split: dataset split ratio
+    """ 数据预处理基本函数。读取和保存所有数据到 h5 文件。（可以从tutorial 文本中看到，cook 函数被直接调用）
+            输入：
+                folders: 所有数据文件组成的一个列表
+                output_directory: 保存 h5 文件的目录
+                train_eval_test_split: 数据分配比
     """
-    output_files = [os.path.join(output_directory, f) for f in ['train.h5', 'eval.h5', 'test.h5']]
-    if (any([os.path.isfile(f) for f in output_files])):
+    output_files = [os.path.join(output_directory, f) for f in ['train.h5', 'eval.h5', 'test.h5']]# 构建保存文件.h5
+    if (any([os.path.isfile(f) for f in output_files])): # any(x)判断x对象是否为空对象，如果都为空、0、false，则返回false，如果不都为空、0、false，则返回true
        print("Preprocessed data already exists at: {0}. Skipping preprocessing.".format(output_directory))
 
     else:
